@@ -71,10 +71,8 @@ You should create a directory for storing materials from this class, including s
 
 1. Read in the NMES data set and store it into an object called nmes.data. For example, using the path to the data on my computer this would look like:
 ```{r}
-#nmes.data<-read.csv("~/Courses/PHBiostats/GoogleDrive/2019_280.347/Module1/nmesUNPROC.csv", stringsAsFactors=FALSE)
-#nmes.data<-read.csv("./Module1/nmesUNPROC.csv", stringsAsFactors=FALSE)
+nmes.data<-read.csv("nmesUNPROC.csv", stringsAsFactors=FALSE)
 library(readr)
-nmesUNPROC <- read_csv("Module1/nmesUNPROC.csv")
 ```
 
 You will need to change the path above to whatever location you have downloaded the file to on your computer.
