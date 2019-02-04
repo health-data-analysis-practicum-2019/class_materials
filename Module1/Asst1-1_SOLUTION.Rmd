@@ -1,0 +1,116 @@
+---
+title: "Assignment 1-1"
+author: "Margaret Taub and Leah Jager"
+date: "February 4, 2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+Here are some exercises to start exploring the questions raised about the NMES data that you will be working to answer for this module.
+
+You should all have experience working with a .R file containing R code from previous courses. This .Rmd file is a little different, since it can contain both R code and regular text. All of your assignments for this class will be turned in as .Rmd files so we can grade both your code and your explanations of things. In order for this code to work, you will need to install the R package called rmarkdown. You can do this by executing the command `install.packages(rmarkdown)` at your R console.
+
+```{r , eval=FALSE}
+install.packages("rmarkdown")
+install.packages("printr")
+```
+
+Like in a .R file, you can interact with a .Rmd file by placing your cursor on a line of code that you want to execute and clicking "Run" or Command-Return (on Mac) or the equivalent on Windows. Code is contained in sections that we call "chunks". You can see such a code chunk below.
+
+Start by running the line of code in the chunk below:
+
+```{r}
+x <- c(8,6,7,5,3,0,9)
+```
+
+Now, complete the following short exercises geared at refreshing your memory a little bit about R. Any regular text can be written outside of the code "chunks". Any code can be written inside the code chunks.
+
+When you want to test and run your whole assignment, you can "Knit to pdf" or "Knit to HTML" to create a .pdf or an HTML doc with your work. We will ask you to turn in both the .Rmd file as well as the output .pdf file for your assignments. If you get stuck on generating the .pdf file, you can just upload the .Rmd file for now.
+
+
+##### **Exercises 1**
+1. Find two different ways of selecting only the odd-numbered elements of `x`.  
+```{r}
+x[c(1,3,5,7)]
+x[seq(from=1, to=7, by=2)]
+
+## %% is modulo
+x %% 2 == 1
+x[x %% 2 == 1]
+x[x %% 2 != 0]
+```
+
+
+
+2a. R has many built-in functions. You have used the `mean` and `sd` function before, as well as functions like `t.test` and `lm`. Generally speaking, a function takes input, called *arguments* and performs some action based on this input. What is the meaning of the numbers 4, 10 and 0.4 in the command `seq(4, 10, .4)`? (You can access the help page for the `seq` function by typing `help(seq)` or `?seq`.)
+Sequence from 4 to 10 with 0.4 between each value.
+(Write answer here)
+
+2b. What would be another way of writing this function call? (Write answer in code chunk below so you can test it by running the line.)
+```{r}
+seq(from=4, to=10, by=.4)
+```
+
+3. Is `R` case sensitive? i.e., is the variable `x` the same as the variable `X`?
+Yes, it is case sensitive, so be careful!
+
+#### Graphing
+
+R can be useful for making graphs and plots.   Two useful plots are the histogram and the scatterplot. Run these lines of code.
+```{r}
+x <- c(2,3,3,4,4,5,5,6,6,7,7,7,7,8,10,10,10,10,10,10,11,13,13)  # create an x-variable
+y <- seq(1,23,by=1)                                             # create a y-variable
+plot(x,y)                              # scatterplot with x on x-axis and y on y-axis
+hist(x)                                # histogram of x 
+```
+
+In RStudio, these commands produce plots in a "Plots" window in the lower right hand corner of RStudio.  You can copy and paste graphs from RStudio to Microsoft Word by clicking the "Export" button and selecting "Copy Plot to Clipboard".
+
+##### **Exercises 2**
+1. Consult the help file for `plot` by typing `?plot` and figure out how to label the x- and y-axes and give a main title to the scatter plot. Remake your scatter plot with labels.
+
+```{r}
+plot(x,y, main="my plot", xlab="x-axis", ylab="y-axis")
+```
+
+
+##### **Exercises 3**
+You should create a directory for storing materials from this class, including slides, .Rmd files, and data sets. This way, you will know how to find everything you need for your analysis.
+
+1. Read in the NMES data set and store it into an object called nmes.data. For example, using the path to the data on my computer this would look like:
+```{r}
+nmes.data<-read.csv("nmesUNPROC.csv", stringsAsFactors=FALSE)
+```
+
+You will need to change the path above to whatever location you have downloaded the file to on your computer.
+
+Your first assignment is to create a data display to start answering the question: "How does the risk of disease compare for smokers and otherwise similar non-smokers?" As inspiration, here are a couple examples of how to make data displays using the variables from your nmes.data data frame.
+
+A simple cross-tabulation of two variables, `educate` and `eversmk`:
+```{r ,results='asis'}
+library(knitr)
+library(printr)
+kable(table(nmes.data$educate, nmes.data$eversmk), row.names=TRUE, caption="Education level by smoking status")
+table(nmes.data$educate, nmes.data$eversmk, nmes.data$beltuse)
+```
+
+A barplot of the above results:
+```{r}
+barplot(table(nmes.data$educate, nmes.data$eversmk), legend.text=TRUE, main="Education level by smoking status")
+```
+
+You can play around with other arguments to barplot, such as `beside=TRUE` to get different barplot representations.
+
+You may also remember a type of plot called a *boxplot*. Here is code to generate a boxplot showing the relationship between packyears and poverty:
+```{r}
+boxplot(nmes.data$packyears ~ nmes.data$poor, main="Pack-years by poverty", ylab="Pack-years")
+```
+
+For your assignment, you will want to think about what variables will be important to look at for examining the risk of disease for smokers and otherwise similar non-smokers, and then what kind of visual representation would be good to illustrate this relationship. You can put the code you use for this visual display here:
+```{r}
+
+```
+
+
+
