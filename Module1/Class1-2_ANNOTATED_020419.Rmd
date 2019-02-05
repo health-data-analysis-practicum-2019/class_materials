@@ -1,0 +1,170 @@
+---
+title: "Class 1-2"
+author: "Margaret Taub and Leah Jager"
+date: "February 4, 2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+This file contains some programming topics that are relevant to your assignment for this week.
+
+We will be using a few new packages today, so you should run these lines of code.
+
+```{r, eval=FALSE}
+install.packages("tidyverse")
+install.packages("printr")
+```
+
+Also, if you are interested in figuring out more about options in knitr (which we will probably talk about in detail sometime in the future) here is my favorite cheat-sheet: https://www.rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf
+
+##### **Part 1: Recoding variables and saving data**
+You may have noticed that it was somewhat confusing to keep track of what variable was what with everything coded as numeric variables, especially when you were comparing two 0-1 variables to one another. Rather than using numbers to represent labeled levels of a variable, R uses something called a `factor`. You can create factors from numeric variables using the `factor()` function.
+
+First, we need to load our data set.
+```{r}
+nmes.data<-read.csv("nmesUNPROC.csv", stringsAsFactors = FALSE)
+```
+
+Here is an example of a plot that is confusing because the variables are coded as 0 and 1:
+```{r}
+barplot(table(nmes.data$female, nmes.data$eversmk), beside = TRUE, legend.text=TRUE, main="Counts individuals who smoked by sex")
+```
+
+Suppose we want to recode the `female` variable so you don't need to remember that 1 is female and 0 is male.
+
+```{r}
+newFemale<-factor(nmes.data$female, levels=c(0,1), labels=c("Male", "Female"))
+table(newFemale, nmes.data$female)
+```
+
+If I were working with this data set myself, I would go through and recode all the categorical variables using factors, and then save a new .csv file or more likely a .rda (R-data) file with the new object, and then work from that object in the future. You can look back at the nmes.data object from AS280.345 to see exactly how things were coded there.
+
+```{r }
+nmes.data$female<-factor(nmes.data$female, levels=c(0,1), labels=c("Male", "Female"))
+nmes.data$eversmk<-factor(nmes.data$eversmk, levels=c(0,1), labels=c("Never smoked", "Smoked"))
+nmes.data$lc5<-factor(nmes.data$lc5, levels=c(0,1), labels=c("No LC", "LC"))
+nmes.data$chd5<-factor(nmes.data$chd5, levels=c(0,1), labels=c("No CHD", "CHD"))
+
+table(nmes.data$lc5, nmes.data$female)
+barplot(table(nmes.data$female, nmes.data$eversmk), beside = TRUE, legend.text=TRUE, main="Counts of smoking by sex")
+```
+
+
+To save this new data frame, you could use the `write.csv` function (although you want to be careful with some of the arguments, see below for what I usually do) or you can just save it in an R-data file that you can load later. Note that the code chunk below is not "evaluated", i.e., the code is not executed when the file is knit.
+```{r , eval=FALSE}
+write.csv(nmes.data, file="<PATH TO NEW FILE>.csv", quote=FALSE, row.names=FALSE)
+save(nmes.data, file="<PATH TO NEW R DATA FILE>/NameOfFile.rda")
+```
+
+If you want to reload the R-data file, you can just use the function `load`:
+```{r , eval=FALSE}
+load("<PATH TO NEW R DATA FILE>.rda")
+```
+
+This will load the object(s) saved in this R-data file into your workspace.
+
+##### **Part 2: Manipulating tables and basic data reshaping**
+
+Many of you wanted to make tables for your data display. The most basic way to do this is to use the `table` function:
+
+```{r}
+table(nmes.data$female, nmes.data$eversmk)
+```
+
+You can make slightly prettier tables using the `printr` package, which you may need to install using `install.packages("printr")` (see above).
+
+```{r}
+library(printr)
+table(nmes.data$female, nmes.data$eversmk)
+table(nmes.data$female, nmes.data$eversmk, nmes.data$lc5)
+```
+
+If you want fractions instead of counts in your tables, you can use `prop.table`:
+```{r}
+prop.table(table(nmes.data$female, nmes.data$eversmk), margin=1)
+prop.table(table(nmes.data$eversmk, nmes.data$lc5), margin=1)
+prop.table(table(nmes.data$female, nmes.data$eversmk, nmes.data$lc5), margin=1)
+```
+
+For more advanced data manipulation and summarization, it is useful to become aquainted with the functions available in the tidyverse package. There is a lot of documentation about the tidyverse pacakges available online, with one of my favorites being:
+
+http://genomicsclass.github.io/book/pages/dplyr_tutorial.html
+
+Here, the package dplyr is the one specifically being discussed; it is part of the tidyverse set of libraries.
+
+If you want a more complete (and somewhat more advanced/technical) summary of the tidyverse functions, here is another good reference (thanks Shannon!): http://www.significantdigits.org/2017/10/switching-from-base-r-to-tidyverse/ 
+
+
+```{r, eval=FALSE}
+install.packages("tidyverse")
+```
+
+```{r, message=FALSE, warning=FALSE}
+library(tidyverse)
+```
+
+
+```{r}
+
+## here is an example of how you can summarize a factor to get totals for a single variable 
+nmes.data %>% group_by(eversmk) %>% summarise(n=n()) 
+nmes.data %>% group_by(female) %>% summarise(n=n())
+
+## you can do the same thing but group by two different factors and get counts for each possible combination
+nmes.data %>% group_by(female, eversmk) %>% summarise(n=n())
+
+## here is an example of creating a new column using the mutate function; it works group-wise
+nmes.data %>% group_by(female, eversmk) %>% summarise(n=n()) %>% mutate(frac = n/sum(n))
+nmes.data %>% group_by(eversmk, female) %>% summarise(n=n()) %>% mutate(frac = n/sum(n))
+```
+
+Working with data subsets, you may want to combine some results from different subsets into a single table.
+
+```{r}
+## one way of getting subsets is to use the filter function
+nmes.data.female <- nmes.data %>% filter(female=="Female")
+nmes.data.male <- nmes.data %>% filter(female=="Male")
+
+
+## using the group_by function from the tidyverse saves you creating data subsets, and allows you to calculate group-level summaries and processed variables
+nmes.data %>% group_by(female, eversmk, lc5) %>% summarize(n=n())
+nmes.data %>% group_by(female, eversmk, lc5) %>% summarize(n=n()) %>% mutate(frac=n/sum(n))
+```
+
+This pipe operator (%>%) can be combined with other functions as well, to make nice data visualizations.
+
+```{r}
+library(ggplot2)
+nmes.data %>% group_by(female, eversmk) %>% summarise(n=n()) %>%
+  ggplot(aes(x=eversmk, y=n, fill=female)) + 
+  geom_bar(stat="identity")
+
+nmes.data %>% group_by(female, eversmk) %>% summarise(n=n()) %>% mutate(frac = n/sum(n)) %>%
+  ggplot(aes(x=eversmk, y=frac, fill=female)) + 
+  geom_bar(stat="identity")
+
+
+nmes.data %>% group_by(female, eversmk, lc5) %>% summarise(n=n()) %>% mutate(frac = n/sum(n)) %>% filter(lc5 == "LC") %>%
+  ggplot(aes(x=eversmk, y=frac, fill=female)) + 
+  geom_bar(stat="identity", position="dodge")
+  
+nmes.data %>% group_by(female, eversmk, lc5) %>% summarise(n=n()) %>% mutate(frac = n/sum(n)) %>% filter(lc5 == "LC") %>%
+  ggplot(aes(x=female, y=frac, fill=eversmk)) + 
+  geom_bar(stat="identity", position="dodge") + 
+  ylab("Rate of lung cancer") + xlab("Sex")
+
+## Exercise: see http://www.sthda.com/english/wiki/ggplot2-barplots-quick-start-guide-r-software-and-data-visualization and figure out how to make the bars next to one another
+
+
+```
+
+How can we use 'mutate' to create a new column that indicates whether they have either lung cancer or CHD?
+
+```{r}
+nmes.data<-nmes.data %>% mutate(disease=factor(lc5 == "LC" | chd5 == "CHD", levels=c(FALSE, TRUE), labels=c("No disease", "Yes disease")))
+
+table(nmes.data$disease, nmes.data$lc5)
+table(nmes.data$disease, nmes.data$chd5)
+```
+
