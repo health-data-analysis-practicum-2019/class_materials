@@ -1,0 +1,45 @@
+---
+title: "Assignment 1-3"
+author: "YOUR NAME(S) HERE"
+date: "February 17, 2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+##### **Part 1: Data visualization**
+Improve or refine your data visualization to address question Q1.1: "How does the risk of disease compare for smokers and otherwise similar non-smokers?"
+
+As before, you'll need to start by loading in the data set -- you can copy and paste the path you used in your previous assignments.
+```{r}
+nmes.data<-read.csv("nmesUNPROC.csv", stringsAsFactors=FALSE)
+```
+
+
+
+```{r}
+
+```
+
+
+##### **Part 2: Logistic regression modeling**
+
+Based on what we discussed in class, update your logistic regression model to address question Q1.1 and interpret the results. What does the model say about Q1.1? *Be sure to focus on answering the question being asked.*
+
+```{r}
+
+```
+
+##### **Part 3: Propensity score calculation**
+
+As discussed in class, use logistic regression to estimate propensity scores for the treatment of smoking (eversmk); that is, use logistic regression to estimate the probability of smoking given possible confounders.
+
+```{r}
+
+```
+
+Then, using these propensity scores, use logistic regression with quintiles of your propensity scores to answer Q1.1. Interpret the results.
+
+```{r}
+
+```
