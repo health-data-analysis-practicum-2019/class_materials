@@ -1,0 +1,196 @@
+---
+title: "Class 1-3"
+author: "Margaret Taub and Leah Jager"
+date: "February 11, 2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+This file contains some programming topics that are relevant to your assignment for this week.
+
+##### **Part 1: Calculating and working with propensity scores**
+
+Since you will be using propensity scores in your assignment this week, here is an example of how to estimate them in `R`.
+
+First, we need to load our data set and recode some variables that we will use.
+```{r}
+library(tidyverse)
+nmes.data<-read.csv("nmesUNPROC.csv", stringsAsFactors=FALSE)
+nmes.data$female<-factor(nmes.data$female, levels=c(0,1), labels=c("Male", "Female"))
+nmes.data$eversmk<-factor(nmes.data$eversmk, levels=c(0,1), labels=c("No", "Yes"))
+nmes.data$lc5<-factor(nmes.data$lc5, levels=c(0,1), labels=c("No LC", "LC"))
+nmes.data$chd5<-factor(nmes.data$chd5, levels=c(0,1), labels=c("No CHD", "CHD"))
+nmes.data$mscd<-factor(ifelse(nmes.data$lc5 == "LC" | nmes.data$chd5 == "CHD", "MSCD", "No MSCD"))
+```
+
+First, we want to pick the covariate(s) that we want to include in our propensity score. Here, we will use `age`, but you may want to include different variables for your scores.
+
+We start by fitting a logistic regression model with the main predictor of interest, `eversmk` as the response variable.
+
+```{r}
+propModel<-glm(eversmk ~ age, data=nmes.data, family=binomial(link="logit"))
+
+# if you want to include more variables, just add them to the model
+propModel2<-glm(eversmk ~ age + bmi + poor, data=nmes.data, family=binomial(link="logit"))
+
+```
+
+Now we want to use this model fit to calculate, for each person in the data set, the predicted probability that they are a smoker, given their age. Think about how you would do this using the model output, given that we just fit the model:
+E(log odds of smoking) = beta0 + beta1*age
+
+You could use the estimated coefficients beta0 and beta1, plus the values of the `age` variable, to calculate a predicted log odds of smoking for each person, and then convert this predicted log odds to a probability.
+
+```{r}
+
+beta0<-coefficients(propModel)[1]
+beta1<-coefficients(propModel)[2]
+predLogOdds1<-beta0 + beta1 * nmes.data$age
+
+```
+
+The log odds ratio of smoking for a one unit change in age is `r format(coefficients(propModel)[2], digits=4)`.
+
+The odds ratio of smoking for a one unit change in age is `r format(exp(coefficients(propModel)[2]), digits=4)`.
+
+
+Fortunately, there are some built-in functions in `R` that make this easier.
+```{r}
+predLogOdds<-predict(propModel)
+predProb<-exp(predLogOdds)/(1+exp(predLogOdds))
+
+## you can also access the predicted probabilities using the fitted.values function
+head(predProb)
+head(fitted.values(propModel))
+
+```
+
+Now that we have the predicted probabilities, we want to group people according to some quantiles of these probabilities. Here, we will work with quartiles (grouping people into 4 approximately equal-sized groups) but you may want to use something else, like quintiles, on your assignment. First, we need to find the values that separate the quartiles. We can use the `quantile` function for this:
+```{r}
+# how would you change the code below to make five groups instead of four?
+probQuartileCutoffs<-quantile(predProb, probs=c(0,0.25, 0.5, 0.75, 1))
+probQuartileCutoffs5<-quantile(predProb, probs=seq(0,1, by=0.2))
+```
+
+Then, we will use the function `cut` to assign each person to a quartile according to their predicted probability.
+```{r}
+# the code below does not quite work: what is going wrong so that some people are getting assigned na values?
+probQuartiles<-cut(predProb, probQuartileCutoffs, include.lowest = TRUE)
+```
+
+Now that we have our quartiles, we can fit our model to explore the relationship between `mscd` and `eversmk` using the propensity scores:
+```{r}
+glmOut<-glm(mscd ~ eversmk + probQuartiles, data=nmes.data, family=binomial(link="logit"))
+
+```
+
+
+Aside: making a grouped `age` variable:
+
+```{r}
+hist(nmes.data$age)
+summary(nmes.data$age)
+
+ageCat<-cut(nmes.data$age, breaks=c(0,40,65,99))
+nmes.data$ageCat<-ageCat
+```
+
+Aside: looking at model fit from logistic regression
+One plot we can make is observed values vs predicted values. 
+Predicted values from the logistic regression are on what scale?
+We want to calculate log-odds of smoking by age.
+```{r}
+obsLogOdds<-nmes.data %>% group_by(age) %>% summarise(oddsOfSmoking = log(sum(eversmk=="Yes")/sum(eversmk=="No")))
+plot(obsLogOdds$age,obsLogOdds$oddsOfSmoking, xlab="Age in years", ylab="log(Odds of smoking)",
+     main="log(odds of smoking) by age, showing \npredicted log(odds)")
+lines(nmes.data$age,predLogOdds, col="blue")
+```
+
+Another kind of plot you can make is called a weatherman plot. This one is more general for models that may have multiple predictor variables since it plots fitted values against observed occurrences of the outcome, and predicted probabilities of the outcome.
+```{r}
+## the fitted.values function gives probabilities, not log odds
+fits<-fitted.values(propModel)
+eversmk01<-as.numeric(nmes.data$eversmk == "Yes")
+plot(fits+rnorm(length(fits))*.02, eversmk01+rnorm(length(eversmk01))*.02, ylim=c(-.2,1.2),
+     xlab="Predicted Probability of smoking", ylab="Observed Probability of smoking", 
+     main="Weatherman Plot", pch=".")
+lines(fits, fits, col="red")
+lines( lowess(fits, eversmk01, f=.05, iter=0), col="green", lwd=2)
+legend(0.41, 0.9, lty=1, col=c("green", "red"), legend=c("Observed fit", "Perfect fit (y=x)"), lwd=2)
+
+```
+
+##### **Part 2: Manipulating tables and basic data reshaping**
+
+
+```{r}
+library(tidyverse)
+
+## here is an example of how you can summarize a factor to get totals for a single variable 
+nmes.data %>% group_by(eversmk) %>% summarise(n=n()) 
+nmes.data %>% group_by(female) %>% summarise(n=n())
+
+## you can do the same thing but group by two different factors and get counts for each possible combination
+nmes.data %>% group_by(female, eversmk) %>% summarise(n=n())
+
+## here is an example of creating a new column using the mutate function; it works group-wise
+nmes.data %>% group_by(female, eversmk) %>% summarise(n=n()) %>% mutate(frac = n/sum(n))
+nmes.data %>% group_by(eversmk, female) %>% summarise(n=n()) %>% mutate(frac = n/sum(n))
+```
+This pipe operator (%>%) can be combined with other functions as well, to make nice data visualizations.
+
+```{r}
+library(ggplot2)
+nmes.data %>% group_by(female, eversmk) %>% summarise(n=n()) %>%
+  ggplot(aes(x=eversmk, y=n, fill=female)) + 
+  geom_bar(stat="identity")
+
+## use the mutate function to calculate fractions within sex
+nmes.data %>% group_by(female, eversmk) %>% summarise(n=n()) %>% mutate(frac = n/sum(n)) %>%
+  ggplot(aes(x=eversmk, y=frac, fill=female)) + 
+  geom_bar(stat="identity")
+
+## use the mutate function to calculate fractions within smoking (note the different order of the group_by variables)
+nmes.data %>% group_by(eversmk, female) %>% summarise(n=n()) %>% mutate(frac = n/sum(n)) %>%
+  ggplot(aes(x=eversmk, y=frac, fill=female)) + 
+  geom_bar(stat="identity")
+
+## incorporate both chance of disease, sex and smoking status
+nmes.data %>% group_by(eversmk, female, lc5) %>% summarise(n=n()) %>% mutate(frac = n/sum(n)) %>%
+  ggplot(aes(x=eversmk, y=frac, fill=lc5)) + 
+  facet_wrap(~ female) + 
+  geom_bar(stat="identity")
+
+
+## Exercise: see http://www.sthda.com/english/wiki/ggplot2-barplots-quick-start-guide-r-software-and-data-visualization and figure out how to make the bars next to one another
+
+
+```
+
+How can we use 'mutate' to create a new column that indicates whether they have either lung cancer or CHD?
+
+```{r}
+nmes.data<-nmes.data %>% mutate(disease = factor(lc5 == "LC" | chd5 == "CHD", levels=c(FALSE,TRUE), labels=c("No diesease", "Yes disease")))
+
+```
+
+Here are some examples that I pulled from your assignments:
+
+```{r}
+
+nmes.data$agegroups <- cut(nmes.data$age, breaks=c(0,30,65,94), labels = c("<30", "30-65", "65+"))
+
+nmes.data %>% group_by(agegroups, eversmk, disease) %>% summarise(n=n()) %>% mutate(frac = n/sum(n)) %>% filter(disease == "Yes disease")  %>%
+ggplot(aes(x=disease, y=frac, fill=eversmk)) + 
+geom_bar(stat="identity", position="dodge") + 
+ylab("Rate of Disease") + facet_wrap(~agegroups) + xlab("Age Group") + guides(fill=guide_legend(title=NULL)) + labs(title="Rate of Disease for Smokers and Non-Smokers by Age Group")
+
+
+## here we can facet on more than one variable
+## make sure that you leave the thing you want to sum over
+## as the last variable you are grouping by
+
+## how about a plot by propensity score quartiles?
+
+```
+
