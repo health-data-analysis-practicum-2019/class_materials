@@ -1,0 +1,20 @@
+---
+title: "Module 1 Final Report"
+author: "YOUR NAMES HERE"
+date: "February 25, 2018"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+This document should include your report answering the questions:
+Question 1.1 (Q1.1): How does the risk of disease compare for smokers and otherwise similar non-smokers?
+
+Question 1.2 (Q1.2): Does the contribution of smoking to the risk of disease vary by sex or SES?
+
+For each question, you should have a data display (with a caption) and a statistical analysis to address the question. 
+
+Write up your results in a few paragraphs to answer both questions. In your write-up, you should refer to your data display(s) and your analysis results. Be numerate!
+
+
+Please include all code used to perform the analysis in this .Rmd file, but strive to make the resulting html document as close to an actual report as you can, i.e., hide code when appropriate and include text explaining your analysis and figure captions.

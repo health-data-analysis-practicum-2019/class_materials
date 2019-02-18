@@ -1,0 +1,203 @@
+---
+title: "Class 1-4"
+author: "Margaret Taub and Leah Jager"
+date: "February 18, 2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+This file contains some programming topics that are relevant to your assignment for this week.
+
+##### **Odds and ends 1: factor levels of MSCD variable**
+
+
+First, we need to load our data set and recode some variables that we will use.
+```{r}
+nmes.data<-read.csv("nmesUNPROC.csv", stringsAsFactors=FALSE)
+nmes.data$female<-factor(nmes.data$female, levels=c(0,1), labels=c("Male", "Female"))
+nmes.data$eversmk<-factor(nmes.data$eversmk, levels=c(0,1), labels=c("No", "Yes"))
+nmes.data$lc5<-factor(nmes.data$lc5, levels=c(0,1), labels=c("No LC", "LC"))
+nmes.data$chd5<-factor(nmes.data$chd5, levels=c(0,1), labels=c("No CHD", "CHD"))
+nmes.data$mscd<-factor(ifelse(nmes.data$lc5 == "LC" | nmes.data$chd5 == "CHD", "MSCD", "No MSCD"))
+```
+
+The above code for the `mscd`, `lc5` and `chd5` factors actually causes some problems (I know this is what I gave you last week, but we still need to be careful). What order are the factor levels in? So which value is treated as 0 and which is treated as 1 in the logistic regression with `mscd` (or `lc5` or `chd5`) as outcome?
+
+What does this do to the model output?
+```{r}
+modMscd<-summary(glm(mscd ~ eversmk + age + female, family=binomial(link="logit"), data=nmes.data))
+modChd5<-summary(glm(chd5 ~ eversmk + age + female, family=binomial(link="logit"), data=nmes.data))
+modMscd
+modChd5
+cbind(coefficients(modMscd)[,1, drop=FALSE], coefficients(modChd5)[,1, drop=FALSE])
+```
+
+How should we fix it?
+
+```{r}
+nmes.data$mscd<-factor(ifelse(nmes.data$lc5 == "LC" | nmes.data$chd5 == "CHD", "MSCD", "No MSCD"), levels=c("No MSCD", "MSCD"), labels=c("No MSCD", "MSCD"))
+```
+
+Now what does the output look like?
+
+```{r}
+summary(glm(mscd ~ eversmk + age + female, family=binomial(link="logit"), data=nmes.data))
+```
+
+##### **Odds and ends 2: link function for glm**
+
+Is there a difference between using `family=binomial(link="log")` and `family=binomial(link="logit")`? 
+
+```{r}
+summary(glm(mscd ~ eversmk + female + poor, family=binomial(link="logit"), data=nmes.data))
+summary(glm(mscd ~ eversmk + female + poor, family=binomial(link="log"), data=nmes.data))
+```
+
+So be careful that you use the correct one (`logit`): either leave unspecified or specifically write `logit`.
+
+##### **Odds and ends 3:  printr and pander packages for tables**
+
+There are not a lot of great options for making pretty tables, unless you have pdflatex installed (which some of you do, but many of you don't).  If you want your tables to look a little better you can try:
+```{r}
+library(printr)
+table(nmes.data$female, nmes.data$eversmk)
+```
+
+There is also a package called `pander` which makes nice tables from the model output. You can install `pander` by running `install.packages("pander")`.
+
+```{r}
+library(pander)
+pander(summary(glm(mscd ~ eversmk + age + female, family=binomial(link="logit"), data=nmes.data)))
+```
+
+
+##### **Odds and ends 4: some tips for making your report a little more readable**
+
+
+For your final assignment for this module, we will be asking you to write a report presenting your analysis with the answers to the questions posed. We want you to include all the code that you used for the analysis in the Rmd file, but not necessarily to print the output of the code to your html document. There are some very helpful tips for managing whether code and code output get printed to the screen to be found on the second page of this `rmarkdown` cheat sheet: https://www.rstudio.com/wp-content/uploads/2015/02/rmarkdown-cheatsheet.pdf
+
+For example, if you want to create a table where you display the table, but not the code, you could do:
+```{r , echo=FALSE}
+table(nmes.data$female, nmes.data$eversmk)
+```
+
+Similarly, if you want to save the output from the barplot function without actually rendering the plot:
+```{r , echo=FALSE, include=FALSE}
+foo<-barplot(table(nmes.data$female, nmes.data$eversmk))
+```
+
+I think there are some very helpful tips found here: http://kbroman.org/knitr_knutshell/pages/Rmarkdown.html
+
+##### **Odds and ends 5: selecting colors for figures**
+
+
+I love selecting colors from the chart at http://research.stowers.org/mcm/efg/R/Color/Chart/ColorChart.pdf and using the `colors()` function to assign them.
+
+For example:
+```{r , echo=FALSE, results="hide"}
+countsByGroup<-table(nmes.data$eversmk, nmes.data$mscd, nmes.data$female)
+prop.table(countsByGroup[,,"Male"], margin=1)
+prop.table(countsByGroup[,,"Female"], margin=1)
+## just want to get the MSCD percent
+MSCDbySex<-cbind(prop.table(countsByGroup[,,"Male"], margin=1)[,"MSCD"],prop.table(countsByGroup[,,"Female"], margin=1)[,"MSCD"])
+colnames(MSCDbySex)<-c("Male", "Female")
+rownames(MSCDbySex)<-c("Never smoker", "Smoker")
+```
+
+```{r}
+barplot(MSCDbySex, beside=TRUE, legend=TRUE, ylab="Risk of MSCD", main="Risk of MSCD, comparing smokers to non-smokers", col=colors()[c(81, 119)])
+```
+
+Sometimes it's better to leave these things to the professionals: https://www.r-bloggers.com/r-using-rcolorbrewer-to-colour-your-figures-in-r/
+
+You'll need to install the `RColorBrewer` package:
+
+```{r , echo=FALSE}
+if (!require("RColorBrewer")) {
+install.packages("RColorBrewer")
+library(RColorBrewer)
+}
+```
+
+You can see all possible colors by doing:
+```{r}
+display.brewer.all()
+```
+
+This makes it easy to pick nice contrasting colors, colors along a gradient, etc. For example:
+```{r, echo=FALSE}
+cols <- brewer.pal(8,"Set1")
+```
+
+```{r}
+barplot(MSCDbySex, beside=TRUE, legend=TRUE, ylab="Risk of MSCD", main="Risk of MSCD, comparing smokers to non-smokers", col=cols[1:2])
+```
+
+If you're interested in creating these plots using ggplot2, below you'll see how to recolor and change the theme of your figure to change its appearance.
+
+```{r}
+library(tidyverse)
+
+# Get data as above, but using the tidyverse
+MSCDbySex2 <- nmes.data %>% 
+  group_by(female,eversmk,mscd) %>% 
+  summarise(n=n()) %>%
+  mutate(frac=n/sum(n)) %>%
+  filter(mscd=='MSCD') 
+
+# Here, we'll just use the defaults in ggplot2 
+ggplot(MSCDbySex2, aes(fill=eversmk, y=frac, x=female)) +
+  geom_bar(position="dodge", stat="identity",colour="black")
+```
+
+The cool thing about ggplot2 is that everything just builds on top of what you've already accomplished, so if you want to change the background, you just change the theme with one more short line of code. Here, we'll use `theme_bw()` to remove the default gray background. We'll then add an additional line of code to change the color of the bars using `scale_fill_manual()`. Finally, we will relabel the axes and title using `labs()`.
+
+```{r}
+# Change the appearance of the plot
+ggplot(MSCDbySex2, aes(fill=eversmk, y=frac, x=female)) +
+  geom_bar(position="dodge", stat="identity",colour="black") +
+  theme_bw() +
+  scale_fill_manual(values=c(cols[1:2])) +
+  labs(y="Risk of MSCD",x="",title="Risk of MSCD, comparing smokers to non-smokers")
+```
+
+One more important piece of controling the look of your plot in ggplot2 uses `theme()`. You can control the look of your graphing using the *many* arguments of theme. Here, we'll introduce how to change the axis text size; however, if you type `?theme` below, you'll see all of the things that can be changed on your plots using `theme()`. For a good demonstration of themes, see https://cran.r-project.org/web/packages/ggthemes/vignettes/ggthemes.html
+
+```{r}
+# Here, we'll start playing with font size
+ggplot(MSCDbySex2, aes(fill=eversmk, y=frac, x=female)) +
+  geom_bar(position="dodge", stat="identity",colour="black") +
+  theme_bw() +
+  scale_fill_manual(values=c(cols[1:2])) +
+  labs(y="Risk of MSCD",x="",title="Risk of MSCD, comparing smokers to non-smokers")+
+  theme(axis.text=element_text(size=12))
+```
+
+##### **Propensity scores: looking for effect modification**
+
+For the most part though, people had no problems calculating the propensity scores and including them in the model as a factor.
+
+*Quick side note:* Some people had issues with the quintile cutoffs not being unique when they included only two variables in the propensity score model. Why is this the case?
+
+For question 1.2, we ask whether the contribution of smoking to the risk of disease varies by sex or SES (poverty). To answer this question, you want to see if there is *effect modification*, i.e., if the effect of smoking on disease is different for one group compared to another. We saw in Public Health Biostats that you look for effect modification by fitting an interaction model. We do the same thing here.
+
+Start by estimating the propensity scores, being sure to include whatever variable you are interested in looking for effect modification by as one of the covariates:
+
+```{r }
+propModel<-glm(eversmk ~ age + female + poor, data=nmes.data, family=binomial(link="logit"))
+predLogOdds<-predict(propModel)
+predProb<-exp(predLogOdds)/(1+exp(predLogOdds))
+probQuartileCutoffs<-quantile(predProb, probs=c(0,0.25, 0.5, 0.75, 1))
+probQuartiles<-cut(predProb, probQuartileCutoffs, include.lowest=TRUE)
+```
+
+Now, fit the `glm` including the interaction between `female` and `eversmk`.
+```{r}
+glmOut<-glm(mscd ~ eversmk*female + probQuartiles, data=nmes.data, family=binomial(link="logit"))
+summary(glmOut)
+```
+
+The effect of smoking on disease risk on the log odds scale is `r format(coefficients(glmOut)[2], digits=3)`. This means the odds ratio comparing non smokers to smokers is `r format(exp(coefficients(glmOut)[2]), digits=3)`. The p-value of the smoking variable is `r format(summary(glmOut)$coefficients["eversmkYes", "Pr(>|z|)"], digits=3)`
+
+
