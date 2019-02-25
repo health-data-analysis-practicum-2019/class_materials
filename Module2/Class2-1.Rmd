@@ -1,0 +1,104 @@
+---
+title: "Class 2-1"
+author: "Margaret Taub and Leah Jager"
+date: "February 25, 2019"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+This file contains some programming topics that are relevant to your assignment for this week.
+
+##### **Part 1: Working with dates**
+The data set for this module consists of measurements of mortality and air pollution in a given city on a given date. Working with dates in R may seem worrisome, but it's actually pretty straightforward. 
+```{r}
+library(lubridate)
+library(tidyverse)
+chicago.data<-read.csv("./Module2/nmmaps/chicago.csv", stringsAsFactors=FALSE)
+ny.data<-read.csv("./Module2/nmmaps/ny.csv", stringsAsFactors=FALSE)
+names(chicago.data)
+head(chicago.data)
+chicago.data$date = ymd(chicago.data$date)
+ny.data$date = ymd(ny.data$date) 
+class(ny.data$date)
+### makes date variable a date-time object
+### fun ways to extract date information that you probably don't need to worry about
+wday(chicago.data$date)[1:10]
+wday(chicago.data$date, label=T)[1:10]
+month(chicago.data$date)[1:10]
+month(chicago.data$date, label=T)[1:10]
+year(chicago.data$date)[1:10]
+
+```
+
+With this date class, it's easy to make plots of the outcome or input variable by date:
+
+```{r}
+plot(death ~ date, data=chicago.data)
+```
+
+
+##### **Part 2: Working with subsets of data beyond `subset`**
+You have already seen how to create subsets of data using the `subset` or `filter` functions. 
+
+Suppose you wanted to perform some action for data from each season, or each day of the week. Rather than making four or seven data subsets, saving them in their own objects, and repeating lines of code to do what you want, I have another option: write a function that is designed to do what you want to any given data subset.
+
+For example, you saw plots in class today for each season of the year. The only things that were different between the plots were the sets of points that were colored, the color itself, and the label on the plot. So let's write a function that will create one of these plots for an arbitrary data subset.
+```{r}
+makeSubPlot<-function(dataSub, mainLabel, pointColor){
+  ## make a scatter plot with all data points
+  plot(death ~ pm10, data=ny.data, ylab="Daily mortality", xlab="PM10", main=mainLabel, col="gray")
+  ## add colored points to specific data subset
+  points(death ~ pm10, data=dataSub, col=pointColor)
+  ## add best fit line for specific data subset
+  abline(lm(death ~ pm10, data=dataSub), col=pointColor, lwd=3)
+  ## return a summary of the linear model output
+  return(summary(lm(death ~ pm10, data=ny.data)))
+}
+
+```
+
+```{r}
+makeSubPlot(subset(ny.data, season=="Winter"), "Winter", "red")
+makeSubPlot(subset(ny.data, season=="Spring"), "Spring", "green")
+```
+
+```{r}
+colsToUse<-c("red", "green", "purple", "blue")
+names(colsToUse)<-c("Winter", "Spring", "Summer", "Autumn")
+par(mfrow=c(2,2))
+mortalityBySeason<-lapply(names(colsToUse), function(x) makeSubPlot(subset(ny.data, season == x), x, colsToUse[x]))
+names(mortalityBySeason)<-names(colsToUse)
+```
+
+You can also access the model outputs in case you wanted to say something interesting, like the coefficient of `pm10` in the linear model for spring is `r mortalityBySeason[["Spring"]]$coefficients[2,1]`.
+
+For those of you who have been using `ggplot` for your figures, that is also an excellent option here to make something similar. 
+
+```{r}
+ny.data %>%
+  ggplot(aes(x = pm10, y = death, col=season)) + 
+  geom_point() + 
+  facet_wrap(~season) + 
+  labs(y = "Daily mortality", x = "Date") +
+  geom_smooth(method = "lm")
+```
+
+
+##### **Part 3: Basics of log-linear regression**
+
+To fit a log-linear model, we again use the `glm` function, but this time use the `poisson` link instead of the `binomial` one. 
+
+```{r}
+glm.model1 = glm(death ~ pm10, data=ny.data, family=poisson)
+summary(glm.model1)
+```
+
+Covariates can be included in the model in the usual way, but be sure to treat variables as factors that should be treated as factors.
+```{r}
+glm.model2 = glm(death ~ pm10 + as.factor(season), data=ny.data, family=poisson)
+summary(glm.model2)
+```
+
+
+
