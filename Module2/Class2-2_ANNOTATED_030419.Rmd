@@ -1,0 +1,340 @@
+---
+title: "Class 2-2"
+author: "Margaret Taub and Leah Jager"
+date: "March 4, 2019"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document: default
+editor_options: 
+  chunk_output_type: console
+---
+
+This file contains some programming topics that are relevant to your assignment for this week.
+
+## **Part 1a: Prediction with log-linear models**
+We will again work with the New York data set in class.
+
+```{r}
+library(lubridate)
+ny.data<-read.csv("./Module2/nmmaps/ny.csv", stringsAsFactors=FALSE)
+ny.data$date = ymd(ny.data$date) 
+```
+
+For part of your assignment this week, you will be asked to plot predicted rates of death as a function of pm10. To do this, one easy way is to use the `predict` function:
+
+```{r}
+glm.model1<-glm(death ~ pm10, data=ny.data, family=poisson)
+summary(glm.model1)
+pred.model1<-predict(glm.model1)
+```
+
+We would like to make a plot of predicted rates against `pm10`.
+
+```{r, eval=FALSE}
+plot(pred.model1 ~ pm10, data=ny.data)
+```
+
+What is going wrong here?
+
+```{r}
+length(pred.model1)
+dim(ny.data)
+```
+
+The issue here is missing data:
+
+```{r}
+sum(is.na(ny.data$pm10))
+```
+
+To deal with this, we'll modify the `na.action` argument within the `glm()` function. Below, by including `na.action=na.exclude`, this tells glm to just give NA as a predicted value for any samples where `pm10` was NA.
+
+```{r}
+glm.model2<-glm(death ~ pm10, data=ny.data, family=poisson, na.action=na.exclude)
+summary(glm.model2)
+pred.model2<-predict(glm.model2)
+```
+
+Now, we can again check the lenghts on the predictions and the initial data frame. They now match. 
+
+```{r}
+length(pred.model2)
+dim(ny.data)
+```
+
+Now we can plot these data without error:
+
+```{r}
+plot(pred.model2 ~ pm10, data=ny.data)
+```
+
+What scale/units do we have on the y-axis? How would we change this to get predicted rate?
+
+Is this really what we want to plot?
+
+```{r, fig.height=7}
+par(mfrow=c(2,1), mar=c(4.1,4.1,2.1,2.1))
+plot(death~date, data=ny.data)
+points(exp(pred.model2) ~ date, data=ny.data, col="blue")
+plot(pm10~date, data=ny.data)
+```
+
+```{r, fig.height=7}
+par(mfrow=c(2,1), mar=c(4.1,4.1,2.1,2.1))
+plot(death~date, data=ny.data)
+ny.data$pred = exp(pred.model2)
+lines(pred ~ date, data=ny.data[ !is.na(ny.data$pred),], col="blue", lwd=2)
+plot(pm10~date, data=ny.data)
+```
+
+There are ways to get the predict function to return values that are not on the log scale. This would remove the need for `exp()` when you add the line to your figure.
+
+You may just want to use the predict function like this:
+```{r}
+pred.model2.resp<-predict(glm.model2, type="response")
+head(pred.model2.resp)
+head(exp(pred.model2))
+head(fitted(glm.model2))
+```
+
+What if you wanted to do this in ggplot2? 
+
+```{r}
+library(ggplot2)
+
+ggplot(aes(date, death), data=ny.data) + 
+  geom_point()+
+  geom_line(data=ny.data[!is.na(ny.data$pred),],aes(x=date, y=pred), colour="blue", size=2)
+
+ggplot(aes(date, death), data=ny.data) + 
+  geom_point(alpha=0.2)+
+  geom_line(data=ny.data[!is.na(ny.data$pred),],aes(x=date, y=pred), colour="blue", size=2)
+
+```
+
+## **Part 1b: Plotting stuff**
+
+
+I found this website which has a bunch of different chapters on graphics parameters:
+http://www.statmethods.net/advgraphs/parameters.html
+
+In terms of playing with the space and layout between plots when you make a figure with multiple panes, I have always liked this website (although it is kind of technical):
+http://research.stowers.org/mcm/efg/R/Graphics/Basics/mar-oma/index.htm
+
+If you want to play around with changes to axes, you can do things like suppress the axis labels when making the orignal plot, and then add them specifically using the `axis` function:
+
+```{r}
+plot(death~date, data=ny.data, yaxt="n", xlab="Year", ylab="Deaths per day")
+axis(4, at=seq(min(ny.data$death), max(ny.data$death), by=20), labels=seq(min(ny.data$death), max(ny.data$death), by=20))
+```
+
+
+This gets pretty close to the figure in the slides:
+```{r}
+par(mfrow=c(3,1))
+par(mar=c(0,4,0,2), oma=c(4,2,2,2))
+plot(death~date, data=ny.data, xaxt="n", xlab="", ylab="Deaths per day")
+plot(tempF~date, data=ny.data, xaxt="n", xlab="", ylab="Temp (F)")
+plot(pm10~date, data=ny.data, ylab="PM10", xlab="Date")
+mtext(text="Date", side=1, line=2, outer=TRUE, cex=0.8)
+```
+
+What if we wanted to make that in ggplot2?
+```{r}
+
+p1 <- ggplot(aes(date, death), data=ny.data) + 
+  geom_point()+
+  labs(y="Deaths per day", x="")
+p2 <- ggplot(aes(date, tempF), data=ny.data) + 
+  geom_point()+
+  labs(y="Temp (F)", x="")
+p3 <- ggplot(aes(date, pm10), data=ny.data) + 
+  geom_point() + 
+  labs(x="Date", y="PM10")
+
+# to put multiple ggplot2 in a single figure, use gridExtra
+library(gridExtra)
+grid.arrange(p1, p2, p3, nrow=3, top="NY")
+
+```
+
+## **Part 2a: Confidence intervals from model output**
+For your assignment this week, you'll be asked to make a table of coefficients and confidence intervals for a set of different models. You can always calculate the confidence intervals by hand, i.e., take the estimate +/- twice its standard error, or you can use the `confint` function.
+
+```{r, message=FALSE, warning=FALSE}
+library(knitr)
+kable(confint(glm.model2))
+confint(glm.model2)[2,]
+paste(format(confint(glm.model2)[2,], digits=3), collapse=",")
+
+kable(confint(glm.model2), digits=3)
+
+```
+
+You'll want to do something to format the output and put it in a table for comparison across models. You may also want to think about the units: log vs non-log.
+
+## **Part 2b: Avoiding errors when calculating confidence intervals**
+
+Above, we use `confint()` to calculate confidence intervals. As models get more complex (more variables & more degrees of freedom), this function can get *very* slow.
+
+The reason for this is that R is not just using the estimated standard error from the model output to form the confidence interval, but something called a profile likelihood. This topic is outside the scope of this class, but if you want to know more, you can read about it at http://stats.stackexchange.com/questions/5304/why-is-there-a-difference-between-manually-calculating-a-logistic-regression-95
+
+To avoid this problem, you can either calculate the confidence interval "by hand" or you can use the function `confint.default` instead of `confint`.
+
+You can see that there are slight differences in the CI boundaries, but for our purposes they are close enough. You can use `confint.default()` instead of `confint()` for the purposes of this class.
+
+```{r, message=FALSE, warning=FALSE}
+library(splines)
+# we previously generated glm.model2
+# glm.model2<-glm(death ~ pm10, data=ny.data, family=poisson, na.action=na.exclude)
+
+confint(glm.model2) #returns CI of (-0.0003792485, 0.0003363976) for pm10
+confint.default(glm.model2)[2,] #returns *similar* but not exactly the same values
+
+# if you wanted to calculate them by hand: 
+tmp<-summary(glm.model2)$coefficients
+tmp["pm10", "Estimate"] - 1.96*tmp["pm10", "Std. Error"]
+tmp["pm10", "Estimate"] + 1.96*tmp["pm10", "Std. Error"]
+```
+
+## **Part 3: Using natural splines in your model**
+For part of your assignment this week, you are asked to substitute categorical time variables such as year, season and month with a natural spline with as many degrees of freedom.
+
+Below you'll find how to use natural splines in your model. We also introduce how to clean up the output from a model. This requires the R package `broom` and uses the `tidy()` function.
+
+```{r, message=FALSE, warning=FALSE}
+library(splines)
+library(broom)
+glm.ns3<-glm(death ~ pm10 + ns(date, 3), data=ny.data, family=poisson, na.action = na.exclude)
+# how we've been looking at model outputs
+summary(glm.ns3)
+# a way to get them into a nice table
+tidy(glm.ns3)
+# this can then be used in kable for pretty .Rmd html output
+kable(tidy(glm.ns3), caption="Table 1. Natural Splines Model Output")
+kable(tidy(glm.ns3), caption="Table 1. Natural Splines Model Output", digits=3)
+```
+
+How does this result compare to the one using `season` as a covariate?
+
+## **Part 4: Summarizing across multiple models**
+We have values from multiple models: `glm.model2` and `glm.ns3`. Let's summarize their coefficients and a single table so we can easily compare across models.
+
+
+```{r}
+# if you've already been doing this a different way, that's fine! But, here's a way to summarize across multiple models
+
+# first, extract the coefficients from each model and put them in a table
+model_coefs <- data.frame(glm.model2$coefficients["pm10"], glm.ns3$coefficients["pm10"])
+# let's clean up the names for each model
+names(model_coefs) <- c("glm", "ns" )
+
+kable(model_coefs, caption = "Table 2: Beta coefficients across models")
+kable(model_coefs, caption = "Table 2: Beta coefficients across models", digits=5)
+
+## what if we wanted to compare down a column?
+## we can transpose the data frame first
+kable(t(model_coefs), caption = "Table 2: Beta coefficients across models")
+
+```
+
+## **Part 5: Taking a step back with functions**
+
+We jumped into the deep end with the example function last week, so I'll take a step back now to go over some simpler examples.
+
+You have been using functions all along, from `mean` to `length` to `plot`. Here, you will learn how to write your own functions that take some input values (arguments) and output something useful (error messages or return values).
+
+Here is a template for the structure of a function:
+```{r, eval=FALSE}
+<FUNCTION NAME> <- function(<ARGUMENTS>){
+  <WHAT YOU WANT THE FUNCTION TO DO WITH THE ARUGUMENTS>
+  return(<WHAT YOU WANT THE FUNCTION TO RETURN>)
+}
+```
+
+
+Here is a pretty simple example function:
+```{r}
+square <- function(x){
+  result = x^2
+  return(result)
+}
+```
+
+Test out this function a couple of times:
+
+```{r}
+square(3)
+square(5)
+square(c(3,5))
+
+# you can store the output of a function for later use:
+mySq<-square(4)
+mySq
+```
+Q1: what are some good things about functions?
+
+A1: Computers are fast, but you are smart. You can write the abstract operation you want to do on an input into a function. Whenever you want to do that operation on the input, just use that function.
+
+Here is another example: 
+```{r}
+a_set_of_operations = function(x){
+  result1 = x*sin(1/x)
+  result2 = x+100
+  result3 = paste("your input value was:",x,sep=" ")
+  return(list(res1=result1,res2=result2,res3=result3)) # list() is a way to store
+  # many different types of variables.
+}
+
+a_set_of_operations(0.2)
+a_set_of_operations(0.8)
+
+# when the return value has multiple elements, you can use the $ operator to look at just one of them
+opRes<-a_set_of_operations(0.8)
+opRes
+opRes$res2
+
+```
+
+Here is another example, for you to look at and decipher:
+
+```{r}
+# Another example to be done later on your own
+power_series = function(power,maxN){
+  res = 0 # allocate a space for result
+  for(i in 1:maxN){
+    res = res + i^power
+  }
+  print(paste("I am running the function on input value ", power))
+  return(res) # ask the function to return its value
+  # Could also write return(res)
+}
+
+# look at the code and try a couple of examples to understand what the function is doing
+power_series(1,2)
+power_series(2,2)
+power_series(1,10)
+
+```
+
+EXERCISE: modify the function above to print out what it's doing: have it say "Outputting the sum of the first <maxN> numbers raised to the power <power>"
+
+To debug a function (step through lines of code one at a time) you can use the `debug` function.
+
+When I write a function, I usually first write the code as if it's not inside a function:
+```{r}
+maxN<-5
+power<-2
+power_series2<-function(maxN, power){
+  res<-0
+  for(i in 1:maxN){
+    res<-res + i^power
+  }
+  res
+}
+power_series2(5,2)
+```
+
+
