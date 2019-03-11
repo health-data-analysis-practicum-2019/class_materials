@@ -1,0 +1,168 @@
+---
+title: "Class 2-3"
+author: "Margaret Taub and Leah Jager"
+date: "March 11, 2019"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+  pdf_document: default
+---
+
+This file contains some programming topics that are relevant to your assignment for this week. We will work with the NY data set again.
+
+```{r}
+library(lubridate)
+library(tidyverse)
+library(splines)
+ny.data<-read.csv("./Module2/nmmaps/ny.csv", stringsAsFactors=FALSE)
+ny.data$date = ymd(ny.data$date) 
+```
+
+## **Part 1a: Adding legends to your ggplot figures**
+
+There were some questions about adding legends in ggplot plots. This is not always the most straightforward. Below I show how you can include `colour=` in your `aes()` aesthetic argument to map a model condition (i.e. "No covariates") to a color (i.e. "blue"). Then, once this argument is included, you can use `scale_colour_manual()` to define the labels and colors for your legend. Last thing, if you don't want a legend title, this is controled in the `theme()` argument by setting `legend.title=element_blank()`.
+
+```{r}
+## run a few models 
+glm.model1<-glm(death ~ pm10, data=ny.data, family=poisson, na.action=na.exclude)
+pred.model1<-predict(glm.model1,type="response")
+
+glm.model2<-glm(death ~ pm10 + season*as.factor(year(date)), data=ny.data, family=poisson, na.action=na.exclude)
+pred.model2<-predict(glm.model2,type="response")
+
+glm.model3<-glm(death ~ pm10 + as.factor(month(date))*as.factor(year(date)), data=ny.data, family=poisson, na.action=na.exclude)
+pred.model3<-predict(glm.model3,type="response")
+
+
+## let's just get all the data we'll need for the lines in one data frame.
+## ggplot is often easier when we have all the data in one object
+df <- cbind(ny.data,pred.model1,pred.model2,pred.model3)
+## here we're only going to visualize when our predictions are not NA
+## so let's just include those in the dataset
+df <- df %>% 
+  dplyr::filter(!is.na(pm10))
+
+## be careful to make sure that colour="" is within the parentheses for aes() 
+## if you want it to be included in your legend
+ggplot(aes(date, death), data=ny.data) + 
+  geom_point()+
+  geom_line(data=df,aes(x=date, y=pred.model1, colour = "blue"), size=2) + 
+  geom_line(data=df,aes(x=date, y=pred.model2, colour="red"), size=1.5) + 
+  geom_line(data=df,aes(x=date, y=pred.model3, colour = "purple"), size=1.5) + 
+  ggtitle("Mortality as a function of date in New York") + 
+  scale_color_manual(labels=c("No covariates","Season by year", "Month by year"),values=c("blue","red","purple"))+
+  theme(legend.title=element_blank())
+
+```
+
+## **Part 1b: Adding titles to your figures**
+
+Playing around with the `mar()` and `oma()` arguments within `par()` can help you get a title on your plot to make sure we know for which city your plot is displaying data. Also, note that `cex.main` controls the size of the title on your plot.
+
+```{r}
+par(mfrow=c(3,1), mar=c(0,4,2,2), oma=c(4,2,2,2))
+plot(pm10 ~ date, data = ny.data, xaxt = "n", main = "New York", ylab="PM 10", xlab= "Date", col="blue", cex.main	=2 )
+plot(tempF ~ date, data = ny.data, xaxt = "n", ylab="Temperature (F)", xlab="Date", col="red")
+plot(death ~ date, data = ny.data, ylab="Daily mortality", xlab="Date", col="green")
+mtext(text="Date", side=1, line=2, outer=TRUE, cex=0.8)
+```
+
+## **Part 2: Visualizing spline models**
+
+Just as you've been doing to visualize your predicted mortality for the log-linear regression models using variables directly, you will want to visualize your `ns()` log-linear regression models. The process is the same. You run the model. You obtain your predicted values. Then you plot the true data with the predicted values on top to assess how well the predictions match the actual data. 
+
+```{r}
+glm.predict.ns3 <- glm(death ~ pm10 + ns(date,3), data=ny.data, family=poisson, na.action=na.exclude)
+ny.data$pred.ns3 <- predict(glm.predict.ns3, type="response")
+
+ggplot(aes(date, death), data=ny.data) +
+  geom_point(colour = "orange", size=0.5) +
+  labs(y= "Deaths per day", x="Date") +
+  theme(legend.position="none")+
+  geom_line(data=ny.data[!is.na(ny.data$pred.ns3),],aes(x=date,y=pred.ns3),inherit.aes =TRUE, colour="blue", size=1) +
+  theme(text = element_text(size=9)) 
+```  
+
+## **Part 3: Choosing between models**
+
+You've now fit a bunch of different models using these data. Graphically, you have a visual idea of which models fit the data WELL. The log-linear model with no covariates looks much like a straight line and doesn't truly capture the fluctuations in the data, so this wouldn't be the best model for these data. However, it's often nice to get a value that summarizes how well your model fits the data. To do this here, we'll use an approach referred to as Akaike's "An Information Criterion," or `AIC()`. We won't disucss detail here, but the lower an AIC for a model, the better that model fits the data.
+
+Below, we can see that glm.model3, where we model death ~ pm10 + month*year has the lowest AIC value. Looking at this value combined with your plots of predicted mortality will help you determine which of your models is the best choice for your final analysis.
+
+```{r}
+AIC(glm.model1,glm.model2,glm.model3)
+```
+## **Part 4a: Writing a function to help you fill in your table**
+
+Since you need to calculate the coefficient of pm10 and its standard error for a collection of different cities, and then combine them into a table, it makes sense to write a function that will do this for you. I think the easiest thing to do is to write something that takes just the city name as an argument, and then reads in the data, fits the model you want, and returns the needed values.
+
+To get you started, I have written a skeleton of the function, with some spots for you to fill in. If you don't want to do things this way, that's OK too. Note that this chunk of code will not currently be evaluated -- you can change that once you have a working function.
+
+```{r, eval=FALSE}
+getEsts<-function(cityName){
+  ## I'm starting with some basic error checking to make sure you ask for a city whose data exists
+  if (! cityName %in% c("baltimore", "chicago", "denver", "detroit", "la", "ny", "saltlakecity", "seattle")) return(paste0("City you requested, ", cityName, ", not available"))
+  
+  ## start by reading in the data file -- you'll need to change the path
+  currDat<-read.csv(paste0("./Module2/nmmaps/", cityName, ".csv"), stringsAsFactors=FALSE)
+
+  ## fit the model that you want and store the output
+  #modOut<-glm(<MODEL YOU WANT TO FIT>, data=currDat, family=poisson)
+  modOut<-glm(death~pm10, data=currDat, family=poisson)
+  
+  ## extract the estimate and its standard error and return them
+  toReturn<-c(summary(modOut)$coefficients["pm10", c("Estimate", "Std. Error")], confint(modOut)[2,])
+  names(toReturn)<-c("Estimate", "Std. Error", "CI Low", "CI High")
+  
+  ## this will return the estimate and its standard error as a vector of length 2
+  return(toReturn)
+}
+```
+
+The idea is that once you have this function, you can create the columns of your table by iterating over the subset of cities that you want to work with. There are several ways you can do this: just call the function for each city, store the output in a variable, and then combine the output into a table; use a `for` loop to iteratite over a vector of city names; use `lapply` over a vector of city names, and then collapse the results using `do.call`.
+
+```{r, eval=FALSE}
+library(knitr)
+## create output by city
+nyOut<-getEsts("ny")
+chiOut<-getEsts("chicago")
+kable(rbind(nyOut, chiOut), digits=5)
+
+## use a for loop
+outMat<-matrix(NA, nrow=2, ncol=4)
+rownames(outMat)<-c("ny", "chicago")
+for (currCity in c("ny", "chicago")){
+  outMat[currCity,]<-getEsts(currCity)
+}
+
+## use lapply
+lapply(c("ny", "chicago"), getEsts)
+(outMat <- do.call("rbind", lapply(c("ny", "chicago"), getEsts)))
+row.names(outMat)<-c("ny", "chicago")
+
+```
+
+In the end, you'll want to make the rownames of the output contain the city names, or something like that, to make a prettier table.
+
+## **Part 4b: Filling in the remaining columns of your table**
+
+Once you have the table with the estimates and their standard errors by city, you'll want to write some code to calculate the remaining columns of the table, including the total variance, the inverse of the variance, the weights and the weighted average. You can easily do all this in R.
+
+For example, suppose you have the object `outMat` with just the first two columns, labeled Estimate and SE. You can calcualte the Total Variance column as follows:
+```{r, eval=FALSE}
+## first, you need to estimate tao-squared, which is estimated using the variance of the estimates across cities minus the mean of the squares of the standard errors. 
+## you can use the R functions var and mean to easily calculate these
+## this code assumes you have named the columns of outMat
+tao2<-var(outMat[,"Estimate"]) - mean(outMat[,"Std. Error"]^2)
+totVar<-outMat[,"Std. Error"]^2 + tao2
+
+## once you have calculated the total variance, add it to your table
+outMat<-cbind(outMat, totVar)
+```
+
+You can do something simlar for the remaining columns of the table. Then, refer back to previous notes on how to make your final table knit in a nice format using `kable()` 
+
+
+
+
