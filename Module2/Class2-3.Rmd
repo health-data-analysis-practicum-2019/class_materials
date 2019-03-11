@@ -113,8 +113,11 @@ getEsts<-function(cityName){
   ## I'm starting with some basic error checking to make sure you ask for a city whose data exists
   if (! cityName %in% c("baltimore", "chicago", "denver", "detroit", "la", "ny", "saltlakecity", "seattle")) return(paste0("City you requested, ", cityName, ", not available"))
   
-  ## start by reading in the data file -- you'll need to change the path
+  ## start by reading in the data file -- you may need to change the path
   currDat<-read.csv(paste0("./Module2/nmmaps/", cityName, ".csv"), stringsAsFactors=FALSE)
+
+  ## add line to make sure date is being handled correctly
+  currDat$date <- ymd(currDat$date)
 
   ## fit the model that you want and store the output
   #modOut<-glm(<MODEL YOU WANT TO FIT>, data=currDat, family=poisson, na.action=na.exclude)
@@ -176,6 +179,15 @@ outMat
 
 You can do something simlar for the remaining columns of the table. Then, refer back to previous notes on how to make your final table knit in a nice format using `kable()` 
 
+## Part 5: Controlling scientific notation
+
+```{r, eval = FALSE}
+## turn scientific notation off globally
+options("scipen"=100, "digits"=3)
+## then make your table and control number of digits  
+kable(t(model_coefs), digits = 4, col.names = c("PM10 Coefficent ", " 2.5% CI ", " 97.5% CI "), align = 'c', caption = "Log-Linear Model Results")
+```  
+  
 
 
 
