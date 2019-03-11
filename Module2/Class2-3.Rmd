@@ -12,6 +12,8 @@ output:
 This file contains some programming topics that are relevant to your assignment for this week. We will work with the NY data set again.
 
 ```{r}
+options(width=120)
+
 library(lubridate)
 library(tidyverse)
 library(splines)
@@ -42,12 +44,17 @@ df <- cbind(ny.data,pred.model1,pred.model2,pred.model3)
 ## so let's just include those in the dataset
 df <- df %>% 
   dplyr::filter(!is.na(pm10))
+```
 
+
+NOTE: `size` argument controls thickness of line. `alpha` argument can be used to adjust transparency of the line as well.
+
+```{r, fig.width=12, fig.height=8}
 ## be careful to make sure that colour="" is within the parentheses for aes() 
 ## if you want it to be included in your legend
 ggplot(aes(date, death), data=ny.data) + 
   geom_point()+
-  geom_line(data=df,aes(x=date, y=pred.model1, colour = "blue"), size=2) + 
+  geom_line(data=df,aes(x=date, y=pred.model1, colour = "blue", alpha=0.2), size=2) + 
   geom_line(data=df,aes(x=date, y=pred.model2, colour="red"), size=1.5) + 
   geom_line(data=df,aes(x=date, y=pred.model3, colour = "purple"), size=1.5) + 
   ggtitle("Mortality as a function of date in New York") + 
@@ -64,7 +71,7 @@ Playing around with the `mar()` and `oma()` arguments within `par()` can help yo
 par(mfrow=c(3,1), mar=c(0,4,2,2), oma=c(4,2,2,2))
 plot(pm10 ~ date, data = ny.data, xaxt = "n", main = "New York", ylab="PM 10", xlab= "Date", col="blue", cex.main	=2 )
 plot(tempF ~ date, data = ny.data, xaxt = "n", ylab="Temperature (F)", xlab="Date", col="red")
-plot(death ~ date, data = ny.data, ylab="Daily mortality", xlab="Date", col="green")
+plot(death ~ date, data = ny.data, xlab="", ylab="Daily mortality", col="green")
 mtext(text="Date", side=1, line=2, outer=TRUE, cex=0.8)
 ```
 
@@ -97,9 +104,11 @@ AIC(glm.model1,glm.model2,glm.model3)
 
 Since you need to calculate the coefficient of pm10 and its standard error for a collection of different cities, and then combine them into a table, it makes sense to write a function that will do this for you. I think the easiest thing to do is to write something that takes just the city name as an argument, and then reads in the data, fits the model you want, and returns the needed values.
 
-To get you started, I have written a skeleton of the function, with some spots for you to fill in. If you don't want to do things this way, that's OK too. Note that this chunk of code will not currently be evaluated -- you can change that once you have a working function.
+To get you started, I have written a skeleton of the function, with some spots for you to fill in. If you don't want to do things this way, that's OK too. Note that I picked the model with just pm10 to illustrate -- you will want to change that once you have chosen your final model.
 
-```{r, eval=FALSE}
+NOTE: This function is designed to fit the same model to multiple cities. You can also write a function that will fit multiple models to one city at a time, e.g., for populating the table of coefficients and confidence intervals.
+
+```{r, eval=TRUE}
 getEsts<-function(cityName){
   ## I'm starting with some basic error checking to make sure you ask for a city whose data exists
   if (! cityName %in% c("baltimore", "chicago", "denver", "detroit", "la", "ny", "saltlakecity", "seattle")) return(paste0("City you requested, ", cityName, ", not available"))
@@ -108,12 +117,15 @@ getEsts<-function(cityName){
   currDat<-read.csv(paste0("./Module2/nmmaps/", cityName, ".csv"), stringsAsFactors=FALSE)
 
   ## fit the model that you want and store the output
-  #modOut<-glm(<MODEL YOU WANT TO FIT>, data=currDat, family=poisson)
-  modOut<-glm(death~pm10, data=currDat, family=poisson)
+  #modOut<-glm(<MODEL YOU WANT TO FIT>, data=currDat, family=poisson, na.action=na.exclude)
+  modOut<-glm(death~pm10, data=currDat, family=poisson, na.action=na.exclude)
   
   ## extract the estimate and its standard error and return them
   toReturn<-c(summary(modOut)$coefficients["pm10", c("Estimate", "Std. Error")], confint(modOut)[2,])
   names(toReturn)<-c("Estimate", "Std. Error", "CI Low", "CI High")
+
+  # you can add code here if you want to for making plots, calculating the AIC
+  # you can make your return value into a list which can have multiple components
   
   ## this will return the estimate and its standard error as a vector of length 2
   return(toReturn)
@@ -122,7 +134,7 @@ getEsts<-function(cityName){
 
 The idea is that once you have this function, you can create the columns of your table by iterating over the subset of cities that you want to work with. There are several ways you can do this: just call the function for each city, store the output in a variable, and then combine the output into a table; use a `for` loop to iteratite over a vector of city names; use `lapply` over a vector of city names, and then collapse the results using `do.call`.
 
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 library(knitr)
 ## create output by city
 nyOut<-getEsts("ny")
@@ -150,7 +162,7 @@ In the end, you'll want to make the rownames of the output contain the city name
 Once you have the table with the estimates and their standard errors by city, you'll want to write some code to calculate the remaining columns of the table, including the total variance, the inverse of the variance, the weights and the weighted average. You can easily do all this in R.
 
 For example, suppose you have the object `outMat` with just the first two columns, labeled Estimate and SE. You can calcualte the Total Variance column as follows:
-```{r, eval=FALSE}
+```{r, eval=TRUE}
 ## first, you need to estimate tao-squared, which is estimated using the variance of the estimates across cities minus the mean of the squares of the standard errors. 
 ## you can use the R functions var and mean to easily calculate these
 ## this code assumes you have named the columns of outMat
@@ -159,6 +171,7 @@ totVar<-outMat[,"Std. Error"]^2 + tao2
 
 ## once you have calculated the total variance, add it to your table
 outMat<-cbind(outMat, totVar)
+outMat
 ```
 
 You can do something simlar for the remaining columns of the table. Then, refer back to previous notes on how to make your final table knit in a nice format using `kable()` 
