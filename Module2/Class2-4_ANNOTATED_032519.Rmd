@@ -1,0 +1,272 @@
+---
+title: "Class 2-4"
+author: "Margaret Taub and Leah Jager"
+date: "Mar 25, 2019"
+output:
+  html_document:
+    toc: true
+    toc_depth: 2
+---
+
+Markdown cheatsheet for formatting: https://github.com/adam-p/markdown-here/wiki/Markdown-Cheatsheet
+
+## Part 1: Assignment reminders
+Largely, your assignents have been really good. A few general reminders as you complete your Module 2 Projects:
+
+* You should have one report per group. Within each group, there should be multiple cities analyzed, one for each member in the group. 
+* you probably don't want to output summary() for each model. It's not very informative.
+* be careful you only have eval=FALSE in your code chunk when you mean to have it in your code chunk ( see below)
+* if you can't knit your file, neither can we. Reach out before your assignment is due with questions. We're happy to help! 
+* The same goes with functions. If you can't get it to work, that's ok. We're happy to help - feel free to reach out!
+
+The rest of this document just reviews a couple stylistic comments as you work on your reports for this week.
+
+## Part 2. Controlling code chunks 
+
+In Rmd documents there are a lot of ways to control the formatting of your document. We'll review a few of them here.
+
+#### Do not include the code
+
+Remember to use echo=FALSE to avoid having uninteresting code written out in your report. I find this link really useful for some examples about different output options from code chunk arguments: http://kbroman.org/knitr_knutshell/pages/Rmarkdown.html
+
+This chunk below's code will not be included in the HTML output generated from this .Rmd document because `echo` is set to FALSE. This is good for package loading. They need to be loaded so the code will run, but it's not impotant that in your final report this information is included.
+
+```{r, echo=FALSE, include=FALSE}
+library(lubridate, verbose=FALSE)
+library(splines, verbose=FALSE)
+library(knitr, verbose=FALSE)
+```
+
+#### Do not run the code
+
+This chunk below will be included in the output, but the code will not be run (will not be evaluated). This is great for assignments when you can't get something to run but still want me to be able to see the code.
+
+```{r, eval=FALSE}
+x=8
+y=19
+```
+
+#### Figure Size
+
+In .Rmd output figure size can be adjusted within the code chunk. You can play around with `fig.height` and `fig.width` to be sure your plots look the way you want in the knitted HTML output.
+
+```{r, fig.height=6,fig.width=6}
+ny.data <-read.csv("./Module2/nmmaps/ny.csv", stringsAsFactors=FALSE)
+
+ny.data$date <- lubridate::ymd(ny.data$date)
+
+## this code has been adapted from a classmate
+par(mfrow=c(3,1), mar=c(0,4,2,2), oma=c(4,2,2,2))
+plot(pm10 ~ date, data = ny.data, xaxt = "n", main = "NY", ylab="PM 10", xlab= "Date", col="blue", cex.main =2 )
+plot(tempF ~ date, data = ny.data, xaxt = "n", ylab="Temperature (F)", xlab="Date", col="red")
+plot(death ~ date, data = ny.data, ylab="Daily mortality", xlab="Date", col="green")
+mtext(text="Date", side=1, line=2, outer=TRUE, cex=0.8)
+```
+
+This plot will be smaller than above because of the code chunk
+
+```{r, fig.height=3,fig.width=3}
+par(mfrow=c(3,1), mar=c(0,4,2,2), oma=c(4,2,2,2))
+plot(pm10 ~ date, data = ny.data, xaxt = "n", main = "NY", ylab="PM 10", xlab= "Date", col="blue", cex.main =2 )
+plot(tempF ~ date, data = ny.data, xaxt = "n", ylab="Temperature (F)", xlab="Date", col="red")
+plot(death ~ date, data = ny.data, ylab="Daily mortality", xlab="Date", col="green")
+mtext(text="Date", side=1, line=2, outer=TRUE, cex=0.8)
+```
+
+## Part 3. Good code
+
+We've discussed that if you're copying and pasting code more than once, you should probably write a function to avoid silly mistakes. Additionally, there are a few other pointers here thay may be helpful.
+
+#### Avoid hard-coding
+
+Try to avoid using any hard-coded numbers, i.e., access model output from the objects you save the output into and don't have lines in your code like:
+
+```{r}
+## do your best to access these coefficients directly from stored model output, not like this
+PM10CoEff<-c(0.0002862, 0.0002912, -1.625e-05, -6.565e-05 ) 
+```
+
+#### In-line Code
+
+To avoid hard-coding, you can report results in the text of your report by including R code outside of a code chunk. For example, if you wanted to refer to a coefficient from an object created in a code chunk, you could do so, using this approach: `r format(PM10CoEff[1], digits=2)`.
+
+
+## Part 4. Function Help
+
+#### Troubleshooting a function
+
+The code below is not evaluated, but if you run each line one at a time you'll be able to step through the logic of troubleshooting a function.
+
+```{r, eval=FALSE}
+library(splines)
+library(lubridate)
+
+getEsts<-function(cityName){
+  if (! cityName %in% c("baltimore", "chicago", "denver", "detroit", "la", "ny", "saltlakecity", "seattle")) return(paste0("City you requested, ", cityName, ", not available"))
+  
+  ## start by reading in the data file -- you'll need to change the path
+  currDat<-read.csv(paste0("./Module2/nmmaps/", cityName, ".csv"), stringsAsFactors=FALSE)
+  
+  ## fit the model that you want and store the output
+  modOut<-glm(death ~ pm10 + ns(date, 3), data=currDat, family=poisson, na.action = na.exclude)
+  
+  ## extract the estimate and its standard error and return them
+  toReturn<-summary(modOut)$coefficients["pm10", c("Estimate", "Std. Error")]
+  
+  ## this will return the estimate and its standard error as a vector of length 2
+  return(toReturn)
+}
+
+## try the function
+getEsts("ny")
+
+## that errors, so let's figure out why
+## first, define the argument of the function directly
+cityName="ny"
+
+## let's step through the function
+currDat<-read.csv(paste0("./nmmaps/", cityName, ".csv"), stringsAsFactors=FALSE)
+
+## that worked. let's try the next line of the function
+modOut<-glm(death ~ pm10 + ns(date, 3), data=currDat, family=poisson, na.action = na.exclude)
+
+## so that gave us an error. Looks like month hasn't been defined yet. Let's fix that
+currDat$date <- ymd(currDat$date)
+## we'll have to make sure we add this into our function
+
+## let's re-try that last line
+modOut<-glm(death ~ pm10 + ns(date, 3), data=currDat, family=poisson, na.action = na.exclude)
+
+## but let's make sure the rest works first.
+toReturn<-summary(modOut)$coefficients["pm10", c("Estimate", "Std. Error")]
+
+## great, that works. let's update the function
+getEsts<-function(cityName){
+  if (! cityName %in% c("baltimore", "chicago", "denver", "detroit", "la", "ny", "saltlakecity", "seattle")) return(paste0("City you requested, ", cityName, ", not available"))
+  
+  ## start by reading in the data file -- you'll need to change the path
+  currDat<-read.csv(paste0("./Module2/nmmaps/", cityName, ".csv"), stringsAsFactors=FALSE)
+  
+  ## add line to make sure date is being handled correctly
+  currDat$date <- ymd(currDat$date)
+  
+  ## fit the model that you want and store the output
+  modOut<-glm(death ~ pm10 + ns(date, 3), data=currDat, family=poisson, na.action = na.exclude)
+  
+  ## extract the estimate and its standard error and return them
+  toReturn<-summary(modOut)$coefficients["pm10", c("Estimate", "Std. Error")]
+  
+  ## this will return the estimate and its standard error as a vector of length 2
+  return(toReturn)
+}
+
+## let's run that
+getEsts("ny")
+
+## success!
+```
+
+Now that we have a working function, let's use it. It's good to know that you can use the `sum` function on a vector or a column of a table. Below, let's use that function that's now working and combine results across cities.
+
+```{r}
+getEsts<-function(cityName){
+  ## I'm starting with some basic error checking to make sure you ask for a city whose data exists
+  if (! cityName %in% c("baltimore", "chicago", "denver", "detroit", "la", "ny", "saltlakecity", "seattle")) return(paste0("City you requested, ", cityName, ", not available"))
+  
+  ## start by reading in the data file -- you'll need to change the path
+  currDat<-read.csv(paste0("./Module2/nmmaps/", cityName, ".csv"), stringsAsFactors=FALSE)
+
+  ## create the modified date variable and remove entries with missing pm10  
+  currDat$date = ymd(currDat$date) 
+
+  ## fit the model that you want and store the output
+  modOut<-glm(death ~ pm10 + ns(date, 3), data=currDat, family=poisson, na.action = na.exclude)
+  
+  ## extract the estimate and its standard error and return them
+  toReturn<-summary(modOut)$coefficients["pm10", c("Estimate", "Std. Error")]
+  
+  ## this will return the estimate and its standard error as a vector of length 2
+  return(toReturn)
+}
+```
+
+Now that the function has been evaluated, if you want to summarize these data across different cities, you could use code like this where you generate outMat but then sum across the column to calculate the wts for each city. 
+
+```{r, echo=TRUE}
+## create output by city
+nyOut<-getEsts("ny")
+chiOut<-getEsts("chicago")
+outMat<-rbind(nyOut, chiOut)
+colnames(outMat)<-c("Estimate", "SE")
+rownames(outMat)<-c("ny", "chicago")
+
+tao2<-var(outMat[,"Estimate"]) - mean(outMat[,"SE"]^2)
+invTotVar<-1/(outMat[,"SE"]^2 + tao2)
+
+outMat<-cbind(outMat, invTotVar)
+wts<-outMat[,"invTotVar"]/sum(outMat[,"invTotVar"])
+
+sum(outMat[,"Estimate"]*wts)
+```
+
+#### Table Issues
+
+If you include kable() within a function, there's one extra piece that may have to be included in your code chunk to make sure the table knits correctly. You have to state that you want the results of the table to pring 'asis'. This could cause problems with other code, so if you are running into issues, it may be necessary to put your table in one code chunk and your models in a separate code chunk, as you don't want those results to display 'asis'.
+
+```{r, echo = FALSE, warning = FALSE, results='asis'}
+knitr_example <-  function(x){
+  kable(x)
+}
+ 
+knitr_example(outMat)
+```
+
+## Part 5. Multiple plots
+
+I've noticed a handful of people using the `gridExtra` package. Often, this package is used to plot figures next to or on top of one another in the same figure. Until recently, `gridExtra` was the best way to do this; however, the code to use `gridExtra` is not intuitive. If gridExtra is working for you, by all means continue to use it; however, if you're looking for a different approach or haven't used any of these approaches previously, it's worth considering `patchwork` because it makes plotting multiple ggplot2 plots simple. More details can be found [here](https://github.com/thomasp85/patchwork), but I'll show a simple example below again using the NYC data as an example.
+
+```{r}
+# to install patchwork, run the following two lines
+#install.packages("devtools")
+#library(devtools)
+#devtools::install_github("thomasp85/patchwork")
+
+library(ggplot2)
+library(patchwork)
+
+## plot code has been adapted from a classmate
+p1 <- ggplot(aes(date, death), data=ny.data) + 
+  geom_point(color="green", size=1) +
+  labs(y="Deaths/day", x="") +
+  theme(text = element_text(size=10))
+p2 <- ggplot(aes(date, tempF), data=ny.data) + 
+  geom_point(color="purple", size=1)+
+  labs(y="Temperature (F)", x="") +
+  theme(text = element_text(size=10))
+p3 <- ggplot(aes(date, pm10), data=ny.data) + 
+  geom_point(color="orange", size=1) + 
+  labs(x="Date", y="PM10") +
+  theme(text = element_text(size=10))
+
+## To plot them together using patchwork, you just add the plots together
+## use plot_layout to define how many columns you want your plot to have
+p1 + p2 + p3 + plot_layout(ncol = 1) 
+```
+
+
+## Part 6. Weights and weighted average
+
+If you have made it as far as calculating the inverse of the variance, you are almost there! Here is some code (fake) that might help you get the rest of the way.
+
+```{r}
+## made up data
+means<-c(2,3,4,5)
+invVar<-c(0.1, 0.2, 0.3, 0.5)
+
+weights<-invVar/sum(invVar)
+weightedAvg<-sum(means*weights)
+
+
+```
+
+
