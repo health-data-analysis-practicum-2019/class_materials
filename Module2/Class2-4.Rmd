@@ -49,7 +49,7 @@ y=19
 In .Rmd output figure size can be adjusted within the code chunk. You can play around with `fig.height` and `fig.width` to be sure your plots look the way you want in the knitted HTML output.
 
 ```{r, fig.height=6,fig.width=6}
-ny.data <-read.csv("/Users/shannonellis/Google Drive/2018_280.347/Module2/nmmaps/ny.csv", stringsAsFactors=FALSE)
+ny.data <-read.csv("./nmmaps/ny.csv", stringsAsFactors=FALSE)
 
 ny.data$date <- lubridate::ymd(ny.data$date)
 
@@ -103,7 +103,7 @@ getEsts<-function(cityName){
   if (! cityName %in% c("baltimore", "chicago", "denver", "detroit", "la", "ny", "saltlakecity", #"seattle")) return(paste0("City you requested, ", cityName, ", not available"))
   
   ## start by reading in the data file -- you'll need to change the path
-  currDat<-read.csv(paste0("/Users/shannonellis/Google Drive/2018_280.347/Module2/nmmaps/", cityName, ".csv"), stringsAsFactors=FALSE)
+  currDat<-read.csv(paste0("./nmmaps/", cityName, ".csv"), stringsAsFactors=FALSE)
   
   ## fit the model that you want and store the output
   modOut<-glm(death ~ pm10 + ns(date, 3), data=currDat, family=poisson, na.action = na.exclude)
@@ -123,7 +123,7 @@ getEsts("ny")
 cityName="ny"
 
 ## let's step through the function
-currDat<-read.csv(paste0("/Users/shannonellis/Google Drive/2018_280.347/Module2/nmmaps/", cityName, ".csv"), stringsAsFactors=FALSE)
+currDat<-read.csv(paste0("./nmmaps/", cityName, ".csv"), stringsAsFactors=FALSE)
 
 ## that worked. let's try the next line of the function
 modOut<-glm(death ~ pm10 + ns(date, 3), data=currDat, family=poisson, na.action = na.exclude)
@@ -143,7 +143,7 @@ getEsts<-function(cityName){
   if (! cityName %in% c("baltimore", "chicago", "denver", "detroit", "la", "ny", "saltlakecity", "seattle")) return(paste0("City you requested, ", cityName, ", not available"))
   
   ## start by reading in the data file -- you'll need to change the path
-  currDat<-read.csv(paste0("/Users/shannonellis/Google Drive/2018_280.347/Module2/nmmaps/", cityName, ".csv"), stringsAsFactors=FALSE)
+  currDat<-read.csv(paste0("./nmmaps/", cityName, ".csv"), stringsAsFactors=FALSE)
   
   ## add line to make sure date is being handled correctly
   currDat$date <- ymd(currDat$date)
@@ -172,7 +172,7 @@ getEsts<-function(cityName){
   if (! cityName %in% c("baltimore", "chicago", "denver", "detroit", "la", "ny", "saltlakecity", "seattle")) return(paste0("City you requested, ", cityName, ", not available"))
   
   ## start by reading in the data file -- you'll need to change the path
-  currDat<-read.csv(paste0("/Users/shannonellis/Google Drive/2018_280.347/Module2/nmmaps/", cityName, ".csv"), stringsAsFactors=FALSE)
+  currDat<-read.csv(paste0("./nmmaps/", cityName, ".csv"), stringsAsFactors=FALSE)
 
   ## create the modified date variable and remove entries with missing pm10  
   currDat$date = ymd(currDat$date) 
@@ -223,6 +223,7 @@ I've noticed a handful of people using the `gridExtra` package. Often, this pack
 
 ```{r}
 # to install patchwork, run the following two lines
+#install.packages("devtools")
 #library(devtools)
 #devtools::install_github("thomasp85/patchwork")
 
