@@ -1,15 +1,19 @@
 ---
 title: "Assignment 2-1"
-author: "YOUR NAME(S) HERE"
+author: "Margaret Taub"
 date: "March 25, 2019"
 output:
   html_document: default
   pdf_document: default
 ---
+I am editing this file.
+
 
 You can use this as a template Rmd file for your assignment.
 
 Once you have cloned the repository, you will have access to the data and can read it in. For example:
+
+I am going to work on my assignment.
 
 ```{r}
 chicago.data<-read.csv("./nmmaps/chicago.csv", stringsAsFactors=FALSE)
