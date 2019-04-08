@@ -178,7 +178,7 @@ getEsts<-function(cityName){
   currDat$date = ymd(currDat$date) 
 
   ## fit the model that you want and store the output
-  modOut<-glm(death ~ pm10 + ns(date, 3), data=currDat, family=poisson, na.action = na.exclude)
+  modOut<-glm(death ~ pm10 + ns(date,10), data=currDat, family=poisson, na.action = na.exclude)
   
   ## extract the estimate and its standard error and return them
   toReturn<-summary(modOut)$coefficients["pm10", c("Estimate", "Std. Error")]
