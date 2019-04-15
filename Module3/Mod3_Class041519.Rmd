@@ -1,0 +1,43 @@
+---
+title: "Class notes for today"
+author: "Margaret Taub"
+date: "4/15/2019"
+output: html_document
+---
+
+
+## General comments:
+
+* Please include your data in the GitHub repository so we can actually run your code. 
+* Please include text in your Rmd file indicating your primary question of interest, your primary outcome and predictor variables, your potential confounders or effect modifiers, etc.
+* Please use relative paths, not absolute paths, so that your file will knit for us.
+
+
+## Data cleaning
+
+Many of you have data sets where you need to recode variables, especially ones with missing values. This can be done using the factor function. You can make it so that only the levels you want are kept, and the others are set to NA.
+
+```{r}
+exampleDF<-data.frame(state=state.abb, obsData=sample(c(0,1,9), size=length(state.abb), prob=c(0.45, 0.45, 0.1), replace=TRUE))
+
+exampleDF$obsDataRecode<-factor(exampleDF$obsData, levels=c(0,1), labels=c("No disease", "Yes disease"))
+table(exampleDF$obsData, exampleDF$obsDataRecode, useNA="always")
+```
+
+There are functions in the tidyverse that are easy to use and extremely helpful for any data filtering that you want to do. Please see http://genomicsclass.github.io/book/pages/dplyr_tutorial.html for a good tutorial.
+
+## Merging datasets
+
+```{r}
+exampleDF2<-data.frame(state=state.abb, obesityRate=sample(c("Obesity over 50%", "Obesity under 50%", "Data not available"), size=length(state.abb), prob=c(0.45, 0.45, 0.1), replace=TRUE))
+
+library(tidyverse)
+exampleDFMerge<-inner_join(exampleDF, exampleDF2, by="state")
+
+
+summary(glm(obsDataRecode ~ obesityRate, data=exampleDFMerge, family=binomial(link="logit")))
+```
+
+A really detailed/useful cheat-sheet for the different ways of joining data sets can be found at https://stat545.com/bit001_dplyr-cheatsheet.html
+
+My main tip is to always check the dimensions of your data sets before and after any merging to make sure things seems like they have behaved correctly.
