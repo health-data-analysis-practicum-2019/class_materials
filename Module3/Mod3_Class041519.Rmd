@@ -12,16 +12,41 @@ output: html_document
 * Please include text in your Rmd file indicating your primary question of interest, your primary outcome and predictor variables, your potential confounders or effect modifiers, etc.
 * Please use relative paths, not absolute paths, so that your file will knit for us.
 
+## Relative paths
+
+The idea of a relative path is that it can work on any computer, as long as the file structure is the same.
+
+```{r}
+## this is an absolute path
+baltData<-read.csv("~/Courses/PHBiostats/GoogleDrive/2019_280.347/class_materials/Module2/nmmaps/baltimore.csv")
+
+## this is a relative path
+baltData<-read.csv("./Module2/nmmaps/baltimore.csv")
+
+## for you guys, you will be able to just do something like:
+# read.csv("myDataFile.csv")
+# load("myDataFile.rda")
+
+
+```
+
 
 ## Data cleaning
 
 Many of you have data sets where you need to recode variables, especially ones with missing values. This can be done using the factor function. You can make it so that only the levels you want are kept, and the others are set to NA.
 
 ```{r}
+## creating a fake data set
 exampleDF<-data.frame(state=state.abb, obsData=sample(c(0,1,9), size=length(state.abb), prob=c(0.45, 0.45, 0.1), replace=TRUE))
 
 exampleDF$obsDataRecode<-factor(exampleDF$obsData, levels=c(0,1), labels=c("No disease", "Yes disease"))
 table(exampleDF$obsData, exampleDF$obsDataRecode, useNA="always")
+
+## example of renaming columnns; you can also do this while you are selecting columns
+library(tidyverse)
+exampleDF<-exampleDF %>% rename(diseaseStatus=obsDataRecode)
+
+exampleDF %>% select(usState=state, diseaseStatus)
 ```
 
 There are functions in the tidyverse that are easy to use and extremely helpful for any data filtering that you want to do. Please see http://genomicsclass.github.io/book/pages/dplyr_tutorial.html for a good tutorial.
@@ -31,11 +56,12 @@ There are functions in the tidyverse that are easy to use and extremely helpful 
 ```{r}
 exampleDF2<-data.frame(state=state.abb, obesityRate=sample(c("Obesity over 50%", "Obesity under 50%", "Data not available"), size=length(state.abb), prob=c(0.45, 0.45, 0.1), replace=TRUE))
 
-library(tidyverse)
 exampleDFMerge<-inner_join(exampleDF, exampleDF2, by="state")
 
 
-summary(glm(obsDataRecode ~ obesityRate, data=exampleDFMerge, family=binomial(link="logit")))
+summary(glm(diseaseStatus ~ obesityRate, data=exampleDFMerge, family=binomial(link="logit")))
+
+## you can see that obesityRate variable should be recoded so that "Data not available" is NA instead of "Data not available" -- I'll leave this as an exercise
 ```
 
 A really detailed/useful cheat-sheet for the different ways of joining data sets can be found at https://stat545.com/bit001_dplyr-cheatsheet.html
